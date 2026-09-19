@@ -553,3 +553,74 @@ async def download_report(
         media_type="application/pdf",
         filename=f"{report.report_number}.pdf",
     )
+
+
+@router.get("/{scan_id}/notice")
+async def download_show_cause_notice(
+    scan_id: int,
+    db: AsyncSession = Depends(get_db),
+    user: User = Depends(get_current_user),
+):
+    from fastapi.responses import FileResponse
+    from app.services.notice_generator import generate_show_cause_notice, generate_notice_number
+
+    scan_res = await db.execute(
+        select(Scan).options(selectinload(Scan.violations)).where(Scan.id == scan_id)
+    )
+    scan = scan_res.scalar_one_or_none()
+    if not scan:
+        raise HTTPException(status_code=404, detail="Scan not found")
+
+    status_val = scan.compliance_status.value if hasattr(scan.compliance_status, "value") else str(scan.compliance_status)
+    scan_data = {
+        "scan_id": scan.id,
+        "id": scan.id,
+        "compliance_status": status_val,
+        "compliance_score": scan.compliance_score,
+        "scan_type": scan.scan_type,
+        "store_name": scan.store_name,
+        "store_address": scan.store_address,
+        "latitude": scan.latitude,
+        "longitude": scan.longitude,
+        "barcode": scan.barcode_detected,
+        "barcode_detected": scan.barcode_detected,
+        "product_name": (scan.extracted_fields or {}).get("common_name") or "Packaged Commodity Sample",
+        "created_at": scan.created_at.strftime("%d %B %Y") if scan.created_at else None,
+        "inspector_name": scan.inspector_name or (user.full_name if user.role.value in ("inspector", "admin", "supervisor") else "Authorized Legal Metrology Officer"),
+    }
+
+    v_dicts = [
+        {
+            "rule_code": v.rule_code,
+            "rule_name": v.rule_name,
+            "description": v.description,
+            "severity": v.severity.value if hasattr(v.severity, "value") else str(v.severity),
+            "field_name": v.field_name,
+            "expected_value": v.expected_value,
+            "actual_value": v.actual_value,
+            "section_reference": v.section_reference,
+            "status": v.status,
+            "inspector_remark": v.inspector_remark,
+        }
+        for v in scan.violations
+    ]
+
+    notice_num = generate_notice_number(scan.id)
+    pdf_path = await run_in_threadpool(
+        generate_show_cause_notice,
+        scan_data=scan_data,
+        violations=v_dicts,
+        extracted_fields=scan.extracted_fields or {},
+        output_dir=settings.REPORTS_DIR,
+        notice_number=notice_num,
+        inspector_name=scan_data["inspector_name"],
+        deadline_days=15,
+    )
+
+    clean_filename = f"Statutory-Show-Cause-Notice-Rule32-{notice_num.replace('/', '_')}.pdf"
+    return FileResponse(
+        pdf_path,
+        media_type="application/pdf",
+        filename=clean_filename,
+    )
+

@@ -18,7 +18,8 @@ import {
   Edit3,
   Check,
   Award,
-  AlertCircle
+  AlertCircle,
+  Scale
 } from 'lucide-react';
 import Link from 'next/link';
 import toast from 'react-hot-toast';
@@ -30,6 +31,7 @@ export default function ScanResultPage() {
   const [scan, setScan] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [selectedImageIndex, setSelectedImageIndex] = useState(0);
+  const [generatingNotice, setGeneratingNotice] = useState(false);
 
   // Inspector Workbench State
   const [isReviewOpen, setIsReviewOpen] = useState(false);
@@ -111,6 +113,24 @@ export default function ScanResultPage() {
       toast.success('Inspection report downloaded');
     } catch {
       toast.error('Report not available');
+    }
+  };
+
+  const downloadNotice = async () => {
+    setGeneratingNotice(true);
+    try {
+      const res = await scanAPI.notice(Number(id));
+      const url = window.URL.createObjectURL(new Blob([res.data], { type: 'application/pdf' }));
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `Statutory-Show-Cause-Notice-Rule32-Scan-${id}.pdf`;
+      a.click();
+      window.URL.revokeObjectURL(url);
+      toast.success('Court-ready Statutory Show-Cause Notice downloaded!');
+    } catch (err: any) {
+      toast.error(err.response?.data?.detail || 'Failed to generate statutory notice');
+    } finally {
+      setGeneratingNotice(false);
     }
   };
 
@@ -272,6 +292,26 @@ export default function ScanResultPage() {
             >
               <Download className="h-4 w-4" /> Download Official PDF
             </button>
+            {scan.violations && scan.violations.length > 0 && (
+              <button
+                type="button"
+                onClick={downloadNotice}
+                disabled={generatingNotice}
+                className="flex items-center gap-1.5 px-3.5 py-2 bg-red-600 hover:bg-red-700 text-white rounded-lg text-sm font-semibold transition-colors shadow-sm disabled:opacity-50"
+                title="Generate Statutory Rule 32 Show-Cause Notice under Sections 18, 36 & 48"
+              >
+                {generatingNotice ? (
+                  <>
+                    <div className="animate-spin rounded-full h-3.5 w-3.5 border-2 border-white border-t-transparent" />
+                    Generating Notice...
+                  </>
+                ) : (
+                  <>
+                    <Scale className="h-4 w-4" /> Issue Rule 32 Notice
+                  </>
+                )}
+              </button>
+            )}
           </div>
         </div>
 
@@ -918,6 +958,81 @@ export default function ScanResultPage() {
                   </div>
                 );
               })}
+            </div>
+          </div>
+        )}
+
+        {/* Statutory Rule 32 Show-Cause Legal Notice Generator Card */}
+        {scan.violations && scan.violations.length > 0 && (
+          <div className="bg-gradient-to-br from-red-50 via-white to-amber-50 rounded-xl border-2 border-red-200 p-6 mb-6 shadow-sm">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-red-100">
+              <div className="flex items-start gap-3">
+                <div className="w-10 h-10 rounded-lg bg-red-100 flex items-center justify-center text-red-700 shrink-0">
+                  <Scale className="h-5 w-5" />
+                </div>
+                <div>
+                  <div className="flex items-center gap-2">
+                    <h3 className="font-bold text-gray-900 text-base">
+                      Statutory Rule 32 Show-Cause Legal Notice Generator
+                    </h3>
+                    <span className="px-2 py-0.5 rounded text-[10px] font-extrabold uppercase bg-red-600 text-white tracking-wider">
+                      Court-Ready
+                    </span>
+                  </div>
+                  <p className="text-xs text-gray-600 mt-0.5">
+                    Legal summons & show-cause notice under Sections 18, 36, and 48 of the Legal Metrology Act, 2009
+                  </p>
+                </div>
+              </div>
+
+              <button
+                type="button"
+                onClick={downloadNotice}
+                disabled={generatingNotice}
+                className="inline-flex items-center justify-center gap-2 px-5 py-2.5 bg-red-600 hover:bg-red-700 text-white rounded-lg text-xs font-bold shadow-md hover:shadow-lg transition-all shrink-0 active:scale-95 disabled:opacity-50"
+              >
+                {generatingNotice ? (
+                  <>
+                    <div className="animate-spin rounded-full h-3.5 w-3.5 border-2 border-white border-t-transparent" />
+                    Generating Legal Notice PDF...
+                  </>
+                ) : (
+                  <>
+                    <Download className="h-4 w-4" />
+                    1-Click Generate Rule 32 Notice PDF
+                  </>
+                )}
+              </button>
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-3 mt-4 text-xs">
+              <div className="p-3 bg-white/80 rounded-lg border border-red-100">
+                <span className="text-gray-500 block text-[11px]">Violator Addressee</span>
+                <strong className="text-gray-900 truncate block mt-0.5" title={scan.extracted_fields?.manufacturer?.value || scan.manufacturer_name || 'Manufacturer / Packer'}>
+                  {scan.extracted_fields?.manufacturer?.value?.split('\n')[0] || scan.manufacturer_name || 'Manufacturer / Packer'}
+                </strong>
+                <span className="text-[10px] text-gray-400">Pre-populated with PIN code</span>
+              </div>
+
+              <div className="p-3 bg-white/80 rounded-lg border border-red-100">
+                <span className="text-gray-500 block text-[11px]">Schedule of Contraventions</span>
+                <strong className="text-red-700 block mt-0.5">
+                  {scan.violations.length} Violation{scan.violations.length > 1 ? 's' : ''} Documented
+                </strong>
+                <span className="text-[10px] text-gray-400">Rule 6 & Sec 18 Citing</span>
+              </div>
+
+              <div className="p-3 bg-white/80 rounded-lg border border-red-100">
+                <span className="text-gray-500 block text-[11px]">Compounding Directive</span>
+                <strong className="text-gray-900 block mt-0.5">Section 48 Directive</strong>
+                <span className="text-[10px] text-gray-400">Form-A Application Option</span>
+              </div>
+
+              <div className="p-3 bg-white/80 rounded-lg border border-red-100">
+                <span className="text-gray-500 block text-[11px]">Response Deadline</span>
+                <strong className="text-red-600 block mt-0.5">15 Calendar Days</strong>
+                <span className="text-[10px] text-gray-400">Strict Judicial Summon</span>
+              </div>
             </div>
           </div>
         )}
