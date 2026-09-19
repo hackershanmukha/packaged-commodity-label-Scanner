@@ -13,47 +13,81 @@ from app.services.ocr_service import run_ocr
 from app.services.field_extractor import extract_all_fields
 from app.services.compliance_engine import check_compliance
 
+from typing import Optional
+from starlette.concurrency import run_in_threadpool
+
 settings = Settings()
 router = APIRouter(prefix="/manufacturer", tags=["Manufacturer Portal"])
 
 
 @router.post("/check-label", response_model=ManufacturerLabelResponse)
 async def check_label_compliance(
-    image: UploadFile = File(...),
+    images: list[UploadFile] = File(default=[]),
+    image: Optional[UploadFile] = File(None),
     product_name: str = Form(...),
     db: AsyncSession = Depends(get_db),
     user: User = Depends(get_current_user),
 ):
     os.makedirs(settings.UPLOAD_DIR, exist_ok=True)
-    ext = os.path.splitext(image.filename)[1].lower() if image.filename else ".jpg"
+    
+    # Collect all uploaded files (supports both multiple 'images' and legacy single 'image')
+    all_files: list[UploadFile] = []
+    if images and len(images) > 0:
+        all_files.extend([f for f in images if f and f.filename])
+    if image and image.filename:
+        all_files.append(image)
+
+    if not all_files:
+        raise HTTPException(status_code=400, detail="Please upload at least one label image.")
+
     valid_extensions = [".jpg", ".jpeg", ".png", ".webp", ".bmp"]
-    if ext not in valid_extensions:
-        if image.content_type and image.content_type.startswith("image/"):
-            ext = ".jpg"
-        else:
-            raise HTTPException(status_code=400, detail="Invalid file type. Please upload an image (JPG, PNG, WebP).")
+    saved_images: list[str] = []
+    ocr_sections: list[str] = []
 
-    filename = f"mfg_{uuid.uuid4().hex}{ext}"
-    filepath = os.path.join(settings.UPLOAD_DIR, filename)
+    for idx, img in enumerate(all_files):
+        ext = os.path.splitext(img.filename)[1].lower() if img.filename else ".jpg"
+        if ext not in valid_extensions:
+            if img.content_type and img.content_type.startswith("image/"):
+                ext = ".jpg"
+            else:
+                continue
 
-    content = await image.read()
-    with open(filepath, "wb") as f:
-        f.write(content)
+        filename = f"mfg_{uuid.uuid4().hex}{ext}"
+        filepath = os.path.join(settings.UPLOAD_DIR, filename)
 
-    ocr_result = run_ocr(filepath)
-    raw_text = ocr_result.get("text", "")
+        content = await img.read()
+        if len(content) > settings.MAX_UPLOAD_SIZE:
+            raise HTTPException(status_code=413, detail=f"File '{img.filename}' too large (max 10MB)")
+
+        with open(filepath, "wb") as f:
+            f.write(content)
+
+        saved_images.append(filepath.replace("\\", "/"))
+
+        ocr_result = await run_in_threadpool(run_ocr, filepath)
+        raw_angle_text = ocr_result.get("text", "").strip()
+        if raw_angle_text:
+            ocr_sections.append(f"--- [PANEL / ANGLE {idx + 1}] ---\n{raw_angle_text}")
+
+    if not saved_images:
+        raise HTTPException(status_code=400, detail="Invalid file type(s). Please upload images (PNG, JPG, WebP).")
+
+    raw_text = "\n\n".join(ocr_sections) if ocr_sections else ""
     extracted_fields = extract_all_fields(raw_text)
     compliance = check_compliance(extracted_fields)
 
+    primary_image_path = saved_images[0]
     label = ManufacturerLabel(
         user_id=user.id,
         product_name=product_name,
-        label_image_path=filepath,
+        label_image_path=primary_image_path,
         compliance_status=ComplianceStatus(compliance["status"]),
         compliance_result={
             "extracted_fields": extracted_fields,
             "compliance": compliance,
             "ocr_text": raw_text,
+            "images": saved_images,
+            "panel_count": len(saved_images),
         },
     )
     db.add(label)
