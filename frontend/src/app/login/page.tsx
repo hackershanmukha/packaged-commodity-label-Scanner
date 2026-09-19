@@ -14,12 +14,17 @@ export default function LoginPage() {
   const [form, setForm] = useState({ email: '', password: '', username: '', full_name: '', role: 'consumer', organization: '' });
   const router = useRouter();
 
-  // If already logged in, redirect to scan page
+  // If already logged in, redirect based on role
   useEffect(() => {
     const token = localStorage.getItem('token');
     const userData = localStorage.getItem('user');
     if (token && userData) {
-      router.replace('/scan');
+      try {
+        const u = JSON.parse(userData);
+        router.replace(u?.role === 'manufacturer' ? '/manufacturer' : '/scan');
+      } catch {
+        router.replace('/scan');
+      }
     }
   }, [router]);
 
@@ -37,7 +42,8 @@ export default function LoginPage() {
         localStorage.setItem('token', res.data.access_token);
         localStorage.setItem('user', JSON.stringify(res.data.user));
         toast.success('Welcome back!');
-        router.push('/scan');
+        const userRole = res.data.user?.role;
+        router.push(userRole === 'manufacturer' ? '/manufacturer' : '/scan');
       }
     } catch (err: any) {
       toast.error(err.response?.data?.detail || 'Something went wrong');

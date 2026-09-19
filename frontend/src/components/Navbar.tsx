@@ -23,12 +23,19 @@ export default function Navbar() {
     router.push('/');
   };
 
-  const links = [
-    { href: '/scan', label: 'Scan', icon: ScanLine },
-    { href: '/history', label: 'History', icon: History },
-    { href: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },
-    ...(user?.role === 'manufacturer' ? [{ href: '/manufacturer', label: 'Label Check', icon: Factory }] : []),
-  ];
+  const isManufacturer = user?.role === 'manufacturer';
+  const isInspectorOrAdmin = user?.role === 'inspector' || user?.role === 'admin' || user?.role === 'supervisor';
+
+  const links = isManufacturer
+    ? [
+        { href: '/manufacturer', label: 'Label Check', icon: Factory },
+        { href: '/manufacturer/history', label: 'Label History', icon: History },
+      ]
+    : [
+        { href: '/scan', label: 'Scan', icon: ScanLine },
+        { href: '/history', label: 'History', icon: History },
+        ...(isInspectorOrAdmin ? [{ href: '/dashboard', label: 'Dashboard', icon: LayoutDashboard }] : []),
+      ];
 
   const isActive = (href: string) => pathname === href;
 
@@ -39,9 +46,11 @@ export default function Navbar() {
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex justify-between h-16">
           <div className="flex items-center">
-            <Link href="/scan" className="flex items-center gap-2">
+            <Link href={isManufacturer ? '/manufacturer' : '/scan'} className="flex items-center gap-2">
               <Shield className="h-8 w-8 text-primary-600" />
-              <span className="text-xl font-bold text-gray-900">Packaged Commodity Label Scanner</span>
+              <span className="text-xl font-bold text-gray-900">
+                {isManufacturer ? 'Manufacturer Portal' : 'Packaged Commodity Label Scanner'}
+              </span>
             </Link>
             <div className="hidden md:flex ml-10 space-x-1">
               {links.map(({ href, label, icon: Icon }) => (

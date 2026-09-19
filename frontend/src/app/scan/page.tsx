@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useRef, useCallback } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import { 
   Upload, 
@@ -86,6 +86,12 @@ export default function ScanPage() {
   const batchFileRef = useRef<HTMLInputElement>(null);
   const individualFileRefs = useRef<{ [key: string]: HTMLInputElement | null }>({});
   const router = useRouter();
+
+  useEffect(() => {
+    if (checked && user?.role === 'manufacturer') {
+      router.replace('/manufacturer');
+    }
+  }, [checked, user, router]);
 
   const filledCount = slots.filter(s => s.file !== null).length;
 

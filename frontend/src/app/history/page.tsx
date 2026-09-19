@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import { scanAPI } from '@/lib/api';
 import { CheckCircle, XCircle, AlertTriangle, Search, Filter, ChevronRight } from 'lucide-react';
 import toast from 'react-hot-toast';
@@ -9,12 +10,17 @@ import { useAuth } from '@/hooks/useAuth';
 
 export default function HistoryPage() {
   const { checked, user } = useAuth();
+  const router = useRouter();
   const [scans, setScans] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState('all');
   const [search, setSearch] = useState('');
 
   useEffect(() => {
+    if (checked && user?.role === 'manufacturer') {
+      router.replace('/manufacturer/history');
+      return;
+    }
     scanAPI.list().then(res => { setScans(res.data); setLoading(false); })
       .catch(() => { toast.error('Failed to load scans'); setLoading(false); });
   }, []);

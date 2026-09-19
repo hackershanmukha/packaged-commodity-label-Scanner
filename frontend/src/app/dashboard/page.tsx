@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import { useRouter } from 'next/navigation';
 import { dashboardAPI } from '@/lib/api';
 import { BarChart3, TrendingUp, AlertTriangle, CheckCircle, XCircle, MapPin } from 'lucide-react';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts';
@@ -9,10 +10,15 @@ import { useAuth } from '@/hooks/useAuth';
 
 export default function DashboardPage() {
   const { checked, user } = useAuth();
+  const router = useRouter();
   const [stats, setStats] = useState<any>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
+    if (checked && user?.role === 'manufacturer') {
+      router.replace('/manufacturer');
+      return;
+    }
     dashboardAPI.stats().then(res => { setStats(res.data); setLoading(false); })
       .catch(() => { toast.error('Failed to load dashboard'); setLoading(false); });
   }, []);

@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useRef, useCallback } from 'react';
+import Link from 'next/link';
 import { 
   Upload, 
   Camera, 
@@ -9,6 +10,7 @@ import {
   XCircle, 
   AlertTriangle, 
   Factory, 
+  History,
   Plus, 
   Trash2, 
   Layers, 
@@ -151,14 +153,23 @@ export default function ManufacturerPage() {
     <div className="min-h-screen bg-gray-50 py-8 px-4">
       <div className="max-w-3xl mx-auto">
         {/* Page Header */}
-        <div className="flex items-center gap-3 mb-6">
-          <div className="w-10 h-10 bg-primary-50 rounded-lg flex items-center justify-center">
-            <Factory className="h-5 w-5 text-primary-600" />
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-6">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 bg-primary-50 rounded-lg flex items-center justify-center">
+              <Factory className="h-5 w-5 text-primary-600" />
+            </div>
+            <div>
+              <h1 className="text-2xl font-bold text-gray-900">Pre-Print Label Check</h1>
+              <p className="text-sm text-gray-500">Verify label compliance across multiple packaging panels before printing</p>
+            </div>
           </div>
-          <div>
-            <h1 className="text-2xl font-bold text-gray-900">Pre-Print Label Check</h1>
-            <p className="text-sm text-gray-500">Verify label compliance across multiple packaging panels before printing</p>
-          </div>
+          <Link
+            href="/manufacturer/history"
+            className="inline-flex items-center gap-1.5 px-3.5 py-2 bg-white border border-gray-200 text-gray-700 hover:text-primary-600 hover:border-primary-300 rounded-lg text-xs font-semibold shadow-sm transition-all self-start sm:self-auto"
+          >
+            <History className="h-3.5 w-3.5 text-primary-600" />
+            View Label History
+          </Link>
         </div>
 
         {/* Input Card */}
