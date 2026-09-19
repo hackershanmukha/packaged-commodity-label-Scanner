@@ -20,6 +20,7 @@ class ComplianceStatus(str, enum.Enum):
     COMPLIANT = "compliant"
     NON_COMPLIANT = "non_compliant"
     PARTIALLY_COMPLIANT = "partially_compliant"
+    REVIEW_REQUIRED = "review_required"
     PENDING = "pending"
 
 
@@ -47,7 +48,7 @@ class User(Base):
     is_active = Column(Boolean, default=True)
     created_at = Column(DateTime, default=utcnow)
 
-    scans = relationship("Scan", back_populates="user")
+    scans = relationship("Scan", back_populates="user", foreign_keys="Scan.user_id")
 
 
 class Product(Base):
@@ -93,9 +94,21 @@ class Scan(Base):
     passed_checks = Column(Integer, default=0)
     failed_checks = Column(Integer, default=0)
 
+    # Inspector Review & Font Size Verification Extensions
+    is_reviewed = Column(Boolean, default=False)
+    inspector_id = Column(Integer, ForeignKey("users.id"), nullable=True)
+    inspector_name = Column(String(255), nullable=True)
+    inspector_notes = Column(Text, nullable=True)
+    inspector_action = Column(String(100), nullable=True)
+    reviewed_at = Column(DateTime, nullable=True)
+    font_size_assessment = Column(JSON, nullable=True)
+    font_size_review = Column(JSON, nullable=True)
+    inspector_corrections = Column(JSON, nullable=True)
+
     created_at = Column(DateTime, default=utcnow)
 
-    user = relationship("User", back_populates="scans")
+    user = relationship("User", back_populates="scans", foreign_keys=[user_id])
+    inspector = relationship("User", foreign_keys=[inspector_id])
     product = relationship("Product", back_populates="scans")
     violations = relationship("Violation", back_populates="scan", cascade="all, delete-orphan")
     report = relationship("Report", back_populates="scan", uselist=False)
@@ -114,6 +127,10 @@ class Violation(Base):
     expected_value = Column(Text, nullable=True)
     actual_value = Column(Text, nullable=True)
     section_reference = Column(String(100), nullable=True)
+
+    # Inspector status tracking & resolution
+    status = Column(String(50), default="OPEN")  # OPEN, VERIFIED_VIOLATION, RESOLVED_COMPLIANT, WAIVED, REVIEW_REQUIRED
+    inspector_remark = Column(Text, nullable=True)
 
     scan = relationship("Scan", back_populates="violations")
 

@@ -56,9 +56,27 @@ class ViolationResponse(BaseModel):
     expected_value: Optional[str]
     actual_value: Optional[str]
     section_reference: Optional[str]
+    status: Optional[str] = "OPEN"
+    inspector_remark: Optional[str] = None
 
     class Config:
         from_attributes = True
+
+
+class ViolationResolution(BaseModel):
+    id: int
+    status: str  # OPEN, VERIFIED_VIOLATION, RESOLVED_COMPLIANT, WAIVED, REVIEW_REQUIRED
+    inspector_remark: Optional[str] = None
+
+
+class InspectorReviewRequest(BaseModel):
+    corrected_fields: Optional[dict] = None
+    resolved_violations: Optional[list[ViolationResolution]] = None
+    font_size_verification: Optional[dict] = None
+    inspector_action: Optional[str] = "APPROVED_COMPLIANT"
+    inspector_notes: Optional[str] = None
+    final_compliance_status: Optional[str] = None
+    finalize_report: bool = True
 
 
 class ScanResponse(BaseModel):
@@ -79,6 +97,15 @@ class ScanResponse(BaseModel):
     total_checks: int
     passed_checks: int
     failed_checks: int
+    is_reviewed: Optional[bool] = False
+    inspector_id: Optional[int] = None
+    inspector_name: Optional[str] = None
+    inspector_notes: Optional[str] = None
+    inspector_action: Optional[str] = None
+    reviewed_at: Optional[datetime] = None
+    font_size_assessment: Optional[dict] = None
+    font_size_review: Optional[dict] = None
+    inspector_corrections: Optional[dict] = None
     created_at: datetime
     violations: list[ViolationResponse] = []
 

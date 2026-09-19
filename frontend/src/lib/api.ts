@@ -53,6 +53,7 @@ export const scanAPI = {
   list: (params?: any) => api.get('/scans', { params }),
   get: (id: number) => api.get(`/scans/${id}`),
   report: (id: number) => api.get(`/scans/${id}/report`, { responseType: 'blob' }),
+  review: (id: number, data: any) => api.post(`/scans/${id}/review`, data),
 };
 
 export const dashboardAPI = {
